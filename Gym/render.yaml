@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: gym-pro-rf01-rf50
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 1 --timeout 120
+    healthCheckPath: /login
+    disk:
+      name: gym-pro-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: GYM_DB_PATH
+        value: /var/data/gimnasio.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GYM_ADMIN_USER
+        value: admin
+      - key: GYM_ADMIN_PASSWORD
+        sync: false

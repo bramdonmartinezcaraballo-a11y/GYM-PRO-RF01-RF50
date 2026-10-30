@@ -1,7 +1,8 @@
 import sqlite3
+import os
 from pathlib import Path
 
-DB = Path(__file__).with_name('gimnasio.db')
+DB = Path(os.environ.get('GYM_DB_PATH', str(Path(__file__).with_name('gimnasio.db'))))
 
                                                                        
 PLANES_MEMBRESIA = {
@@ -15,7 +16,8 @@ PAGO_POR_CLASE = 10000
 
 
 def obtener_conexion():
-    con = sqlite3.connect(DB)
+    con = sqlite3.connect(DB, timeout=30)
+    con.execute('PRAGMA busy_timeout = 30000')
     con.execute('PRAGMA foreign_keys = ON')
     return con
 
@@ -129,10 +131,18 @@ def _execute(sql, params=(), fetch=False, many=False):
 
                                                           
 def validar_usuario(usuario, contrasena):
-    ok, rows = _execute('SELECT tipo FROM usuarios WHERE usuario=? AND contrasena=?', (usuario, contrasena), True)
-    if ok and rows:
-        return rows[0][0]
-    return None
+    from werkzeug.security import check_password_hash, generate_password_hash
+    ok, rows = _execute('SELECT id, contrasena, tipo FROM usuarios WHERE usuario=?', (usuario,), True)
+    if not ok or not rows:
+        return None
+    uid, stored, tipo = rows[0]
+    try:
+        valido = check_password_hash(stored, contrasena)
+    except (ValueError, TypeError):
+        valido = stored == contrasena
+        if valido:
+            _execute('UPDATE usuarios SET contrasena=? WHERE id=?', (generate_password_hash(contrasena), uid))
+    return tipo if valido else None
 
 
                                                                      
@@ -603,5 +613,4 @@ def reporte_general():
 
 
 crear_tablas()
-_sembrar_usuarios()
 actualizar_estados_membresia()
