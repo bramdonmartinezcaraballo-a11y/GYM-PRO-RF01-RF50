@@ -1,0 +1,1 @@
+# No requiere instalaciones externas. Usa tkinter y sqlite3 incluidos con Python.
